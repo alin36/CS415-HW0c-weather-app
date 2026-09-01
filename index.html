@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Weather & Air Quality Dashboard</title>
+<style>
+  :root {
+    --bg-color: #f0f4f8;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --primary: #2563eb;
+    --border-radius: 12px;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px;
+  }
+  .app-container {
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 480px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    padding: min(24px, 4vw);
+    overflow: visible;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-size: clamp(1.2rem, 5vw, 1.5rem);
+    color: var(--text-main);
+  }
+  header p.subtitle {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* Responsive Search Box */
+  .search-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+    width: 100%;
+  }
+  .input-wrap {
+    position: relative;
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  input[type="text"]:focus {
+    border-color: var(--primary);
+  }
+  .search-box button {
+    flex: 0 0 auto;
+  }
+  button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover {
+    background-color: #1d4ed8;
+  }
+  .geo-btn {
+    width: 100%;
+    background-color: #e2e8f0;
+    color: var(--text-main);
+    margin-top: 12px;
+    margin-bottom: 20px;
+  }
+  .geo-btn:hover {
+    background-color: #cbd5e1;
+  }
+
+  /* Suggestion dropdown */
+  .suggestions {
+    list-style: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 20;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    display: none;
+  }
+  .suggestions.open {
+    display: block;
+  }
+  .suggestion-group-label {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+  .suggestion-item:hover,
+  .suggestion-item.active {
+    background: #eff6ff;
+  }
+  .suggestion-main {
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .suggestion-main .flag {
+    font-size: 0.85em;
+  }
+  .suggestion-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .suggestion-empty {
+    padding: 12px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .status-msg {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+  }
+  .status-msg.warn {
+    color: #b45309;
+  }
+  .status-msg.error {
+    color: #b91c1c;
+  }
+
+  .dashboard {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  .location-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    word-break: break-word;
+  }
+  .umbrella-card {
+    padding: 14px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .umbrella-yes {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .umbrella-no {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+  }
+
+  /* Responsive Grid for Temp & Humidity */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .metric-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    padding: 12px;
+    text-align: center;
+    min-width: 0;
+  }
+  .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+  .aqi-badge {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Mobile Adjustments for Extremely Small Screens (< 320px) */
+  @media (max-width: 320px) {
+    .search-box button {
+      width: 100%;
+    }
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Live Weather & Air Quality</h1>
+      <p class="subtitle">Start typing a city — pick the right one from the list</p>
+    </header>
+
+    <div class="search-box">
+      <div class="input-wrap">
+        <input
+          type="text"
+          id="cityInput"
+          placeholder="Enter city (e.g., Chicago, Odessa TX, Phoenix)"
+          autocomplete="off"
+          role="combobox"
+          aria-expanded="false"
+          aria-autocomplete="list"
+          aria-controls="suggestionList"
+        />
+        <ul id="suggestionList" class="suggestions" role="listbox"></ul>
+      </div>
+      <button id="searchBtn" onclick="handleSearchClick()">Search</button>
+    </div>
+
+    <button class="geo-btn" onclick="fetchByLocation()">📍 Use My Current Location</button>
+
+    <div id="status" class="status-msg" aria-live="polite">Enter a city to load weather data.</div>
+
+    <div id="dashboard" class="dashboard">
+      <div id="locationName" class="location-title">--</div>
+
+      <!-- (2) Raincoat / Umbrella Check -->
+      <div id="umbrellaCard" class="umbrella-card">--</div>
+
+      <div class="metrics-grid">
+        <!-- (1) Temperature -->
+        <div class="metric-card">
+          <div class="metric-label">Temperature</div>
+          <div id="tempVal" class="metric-value">--</div>
+        </div>
+
+        <!-- (3) Humidity -->
+        <div class="metric-card">
+          <div class="metric-label">Humidity</div>
+          <div id="humidityVal" class="metric-value">--</div>
+        </div>
+      </div>
+
+      <!-- (4) Air Quality -->
+      <div class="metric-card">
+        <div class="metric-label">Air Quality (US AQI)</div>
+        <div id="aqiVal" class="metric-value">--</div>
+        <div id="aqiStatus" class="aqi-badge">--</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------------------------------------------------------
+    // Config
+    // ---------------------------------------------------------------------
+    const DEBOUNCE_MS = 300;      // wait time after typing stops before searching
+    const MIN_QUERY_LEN = 2;      // open-meteo does exact match at 2 chars, prefix match at 3+
+    const FUZZY_MIN_LEN = 4;      // only attempt typo-correction on queries this long or longer
+    const MAX_SUGGESTIONS = 8;    // cap dropdown length so it stays scannable
+
+    const statusEl = document.getElementById('status');
+    const dashboardEl = document.getElementById('dashboard');
+    const cityInput = document.getElementById('cityInput');
+    const suggestionListEl = document.getElementById('suggestionList');
+
+    let currentSuggestions = [];  // full location objects backing the visible dropdown
+    let activeIndex = -1;         // keyboard-highlighted row
+    let searchToken = 0;          // guards against out-of-order async responses
+    let debounceTimer = null;
+
+    // ---------------------------------------------------------------------
+    // Small utilities
+    // ---------------------------------------------------------------------
+
+    function setStatus(text, tone) {
+      statusEl.textContent = text;
+      statusEl.className = 'status-msg' + (tone ? ' ' + tone : '');
+    }
+
+    function debounce(fn, delay) {
+      return (...args) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    // Generates plausible "typo-corrected" variants of a string using the
+    // two most common typo patterns: adjacent-letter swaps ("Pheonix" ->
+    // "Phoenix") and single dropped/duplicated letters ("Odesa" <-> "Odessa").
+    // This is a lightweight stand-in for real fuzzy matching since the
+    // open-meteo geocoder itself only does prefix matching, not spell-check.
+    function generateTypoVariants(str) {
+      const variants = new Set();
+      const chars = str.split('');
+
+      // adjacent transpositions
+      for (let i = 0; i < chars.length - 1; i++) {
+        const copy = chars.slice();
+        [copy[i], copy[i + 1]] = [copy[i + 1], copy[i]];
+        variants.add(copy.join(''));
+      }
+
+      // single-character deletions
+      for (let i = 0; i < chars.length; i++) {
+        variants.add(chars.slice(0, i).join('') + chars.slice(i + 1).join(''));
+      }
+
+      variants.delete(str);
+      return Array.from(variants);
+    }
+
+    function countryFlagEmoji(countryCode) {
+      if (!countryCode || countryCode.length !== 2) return '';
+      const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map((c) => 127397 + c.charCodeAt(0));
+      return String.fromCodePoint(...codePoints);
+    }
+
+    function formatLabel(place) {
+      const parts = [place.name];
+      if (place.admin1) parts.push(place.admin1);
+      if (place.country) parts.push(place.country);
+      return parts.join(', ');
+    }
+
+    function formatSubLabel(place) {
+      const bits = [];
+      if (place.country) bits.push(place.country);
+      if (place.population) bits.push(`pop. ${place.population.toLocaleString()}`);
+      return bits.join(' · ');
+    }
+
+    // ---------------------------------------------------------------------
+    // Geocoding
+    // ---------------------------------------------------------------------
+
+    async function geocodeQuery(name, count = 10) {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=${count}&language=en&format=json`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.results || [];
+    }
+
+    // Runs the primary search, and if it comes back empty on a long-enough
+    // query, retries with likely typo-corrected spellings and merges
+    // whatever comes back. Returns { results, isFuzzy }.
+    async function fuzzySearch(query) {
+      const primary = await geocodeQuery(query, MAX_SUGGESTIONS);
+      if (primary.length > 0 || query.length < FUZZY_MIN_LEN) {
+        return { results: primary.slice(0, MAX_SUGGESTIONS), isFuzzy: false };
+      }
+
+      const variants = generateTypoVariants(query);
+      const variantResults = await Promise.all(
+        variants.map((v) => geocodeQuery(v, 5).catch(() => []))
+      );
+
+      const merged = new Map();
+      variantResults.flat().forEach((place) => {
+        if (!merged.has(place.id)) merged.set(place.id, place);
+      });
+
+      const combined = Array.from(merged.values())
+        .sort((a, b) => (b.population || 0) - (a.population || 0))
+        .slice(0, MAX_SUGGESTIONS);
+
+      return { results: combined, isFuzzy: combined.length > 0 };
+    }
+
+    // ---------------------------------------------------------------------
+    // Dropdown rendering
+    // ---------------------------------------------------------------------
+
+    function closeDropdown() {
+      suggestionListEl.classList.remove('open');
+      suggestionListEl.innerHTML = '';
+      cityInput.setAttribute('aria-expanded', 'false');
+      activeIndex = -1;
+    }
+
+    function renderSuggestions(results, { isFuzzy = false, loading = false, emptyMessage = '' } = {}) {
+      currentSuggestions = results;
+      activeIndex = -1;
+      suggestionListEl.innerHTML = '';
+
+      if (loading) {
+        const li = document.createElement('li');
+        li.className = 'suggestion-empty';
+        li.textContent = 'Searching…';
+        suggestionListEl.appendChild(li);
+        suggestionListEl.classList.add('open');
+        cityInput.setAttribute('aria-expanded', 'true');
+        return;
+      }
+
+      if (results.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'suggestion-empty';
+        li.textContent = emptyMessage || 'No matching city found. Check the spelling and try again.';
+        suggestionListEl.appendChild(li);
+        suggestionListEl.classList.add('open');
+        cityInput.setAttribute('aria-expanded', 'true');
+        return;
+      }
+
+      if (isFuzzy) {
+        const label = document.createElement('li');
+        label.className = 'suggestion-group-label';
+        label.textContent = 'Did you mean…';
+        suggestionListEl.appendChild(label);
+      }
+
+      results.forEach((place, index) => {
+        const li = document.createElement('li');
+        li.className = 'suggestion-item';
+        li.setAttribute('role', 'option');
+        li.dataset.index = String(index);
+
+        const main = document.createElement('div');
+        main.className = 'suggestion-main';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = [place.name, place.admin1].filter(Boolean).join(', ');
+
+        const flagSpan = document.createElement('span');
+        flagSpan.className = 'flag';
+        flagSpan.textContent = countryFlagEmoji(place.country_code);
+
+        main.appendChild(nameSpan);
+        main.appendChild(flagSpan);
+
+        const sub = document.createElement('div');
+        sub.className = 'suggestion-sub';
+        sub.textContent = formatSubLabel(place);
+
+        li.appendChild(main);
+        li.appendChild(sub);
+
+        li.addEventListener('mousedown', (e) => {
+          // mousedown (not click) fires before the input's blur event
+          e.preventDefault();
+          selectSuggestion(place);
+        });
+
+        suggestionListEl.appendChild(li);
+      });
+
+      suggestionListEl.classList.add('open');
+      cityInput.setAttribute('aria-expanded', 'true');
+    }
+
+    function highlightActive() {
+      const items = suggestionListEl.querySelectorAll('.suggestion-item');
+      items.forEach((item, i) => {
+        item.classList.toggle('active', i === activeIndex);
+        if (i === activeIndex) item.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    function selectSuggestion(place) {
+      cityInput.value = formatLabel(place);
+      closeDropdown();
+      loadWeatherData(place.latitude, place.longitude, formatLabel(place));
+    }
+
+    // ---------------------------------------------------------------------
+    // Live typeahead (fires as the user types)
+    // ---------------------------------------------------------------------
+
+    const handleInput = debounce(async () => {
+      const query = cityInput.value.trim();
+      if (query.length < MIN_QUERY_LEN) {
+        closeDropdown();
+        return;
+      }
+
+      renderSuggestions([], { loading: true });
+      const myToken = ++searchToken;
+
+      try {
+        const { results, isFuzzy } = await fuzzySearch(query);
+        if (myToken !== searchToken) return; // a newer keystroke already superseded this
+        renderSuggestions(results, { isFuzzy });
+      } catch (err) {
+        if (myToken !== searchToken) return;
+        renderSuggestions([], { emptyMessage: 'Error reaching the location search. Try again.' });
+        console.error(err);
+      }
+    }, DEBOUNCE_MS);
+
+    cityInput.addEventListener('input', handleInput);
+
+    cityInput.addEventListener('keydown', (e) => {
+      const isOpen = suggestionListEl.classList.contains('open');
+
+      if (e.key === 'ArrowDown') {
+        if (!isOpen || currentSuggestions.length === 0) return;
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, currentSuggestions.length - 1);
+        highlightActive();
+      } else if (e.key === 'ArrowUp') {
+        if (!isOpen || currentSuggestions.length === 0) return;
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        highlightActive();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (isOpen && activeIndex >= 0 && currentSuggestions[activeIndex]) {
+          selectSuggestion(currentSuggestions[activeIndex]);
+        } else {
+          handleSearchClick();
+        }
+      } else if (e.key === 'Escape') {
+        closeDropdown();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.input-wrap')) closeDropdown();
+    });
+
+    // ---------------------------------------------------------------------
+    // Explicit "Search" action (button click or Enter without a highlighted row)
+    // ---------------------------------------------------------------------
+
+    async function handleSearchClick() {
+      const query = cityInput.value.trim();
+      if (!query) {
+        alert('Please enter a city name.');
+        return;
+      }
+
+      closeDropdown();
+      setStatus('Searching location...');
+      dashboardEl.style.display = 'none';
+
+      try {
+        const { results, isFuzzy } = await fuzzySearch(query);
+
+        if (results.length === 0) {
+          setStatus('City not found. Please check the spelling and try again.', 'error');
+          return;
+        }
+
+        if (results.length === 1) {
+          const place = results[0];
+          loadWeatherData(place.latitude, place.longitude, formatLabel(place));
+          return;
+        }
+
+        // More than one match (e.g. duplicate city names across states/countries,
+        // or several typo-corrected candidates) — let the user pick instead of
+        // silently guessing.
+        setStatus(
+          isFuzzy
+            ? 'Did you mean one of these? Select a city below.'
+            : `Found ${results.length} places named "${query}" — select the right one below.`,
+          'warn'
+        );
+        renderSuggestions(results, { isFuzzy });
+      } catch (err) {
+        setStatus('Error fetching location data.', 'error');
+        console.error(err);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Geolocation-based search (unchanged from original)
+    // ---------------------------------------------------------------------
+
+    function fetchByLocation() {
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+      }
+      closeDropdown();
+      setStatus('Detecting location...');
+      dashboardEl.style.display = 'none';
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          loadWeatherData(pos.coords.latitude, pos.coords.longitude, 'Your Location');
+        },
+        () => {
+          setStatus('Location access denied or unavailable.', 'error');
+        }
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Weather + air quality fetch and render (unchanged logic from original)
+    // ---------------------------------------------------------------------
+
+    async function loadWeatherData(lat, lon, locationLabel) {
+      setStatus('Fetching weather and air quality...');
+      try {
+        // Fetch Weather Data (Temp in °F, Humidity, Rain/Weather Code)
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code&temperature_unit=fahrenheit`;
+        const weatherRes = await fetch(weatherUrl);
+        const weatherData = await weatherRes.json();
+
+        // Fetch Air Quality Data (US AQI)
+        const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`;
+        const aqiRes = await fetch(aqiUrl);
+        const aqiData = await aqiRes.json();
+
+        updateUI(locationLabel, weatherData.current, aqiData.current);
+        setStatus('');
+        dashboardEl.style.display = 'flex';
+      } catch (err) {
+        setStatus('Error fetching weather data. Please try again.', 'error');
+        console.error(err);
+      }
+    }
+
+    function updateUI(locationName, weather, air) {
+      document.getElementById('locationName').textContent = locationName;
+
+      // 1. Current Temperature
+      document.getElementById('tempVal').textContent = `${Math.round(weather.temperature_2m)}°F`;
+
+      // 3. Humidity Level
+      document.getElementById('humidityVal').textContent = `${weather.relative_humidity_2m}%`;
+
+      // 2. Umbrella / Raincoat Recommendation
+      // WMO codes >= 51 indicate drizzle, rain, freezing rain, showers, or thunderstorms
+      const isRaining = weather.precipitation > 0 || weather.weather_code >= 51;
+      const umbrellaEl = document.getElementById('umbrellaCard');
+      if (isRaining) {
+        umbrellaEl.textContent = '☔ Rain likely — Bring a raincoat or umbrella!';
+        umbrellaEl.className = 'umbrella-card umbrella-yes';
+      } else {
+        umbrellaEl.textContent = '☀️ No raincoat needed today!';
+        umbrellaEl.className = 'umbrella-card umbrella-no';
+      }
+
+      // 4. Air Quality (US AQI)
+      const aqi = air ? air.us_aqi : null;
+      const aqiValEl = document.getElementById('aqiVal');
+      const aqiStatusEl = document.getElementById('aqiStatus');
+      if (aqi !== null && aqi !== undefined) {
+        aqiValEl.textContent = aqi;
+        let label = 'Good';
+        let bg = '#dcfce7';
+        let color = '#166534';
+        if (aqi > 50 && aqi <= 100) {
+          label = 'Moderate';
+          bg = '#fef9c3';
+          color = '#854d0e';
+        } else if (aqi > 100 && aqi <= 150) {
+          label = 'Unhealthy (Sensitive)';
+          bg = '#ffedd5';
+          color = '#9a3412';
+        } else if (aqi > 150) {
+          label = 'Unhealthy';
+          bg = '#fee2e2';
+          color = '#991b1b';
+        }
+        aqiStatusEl.textContent = label;
+        aqiStatusEl.style.backgroundColor = bg;
+        aqiStatusEl.style.color = color;
+      } else {
+        aqiValEl.textContent = 'N/A';
+        aqiStatusEl.textContent = 'Data unavailable';
+      }
+    }
+  </script>
+</body>
+</html>
